@@ -43,29 +43,21 @@ define syntax 8.5 @;
     endif
 enddefine;
 
-;;; -- absent -------------------------------------------------
-
-defclass lconstant Absent {};
-constant absent = consAbsent();
-
-;;; ;;; -- Couple -------------------------------------------------
-;;;
-;;; defclass Couple {
-;;;     left,
-;;;     right
-;;; };
 
 
 ;;; -- ModeState ----------------------------------------------
-
+;;;
+;;; ModeState is a positive integer that counts how deeply
+;;; nested we are in a quasi-quoted content.  I use the phrase
+;;; quasi-quoted with some trepidation, I doubt it is correct!
+;;;
 
 defclass ModeState {
-    modeStateQuasiQuoting,
-    modeStateWidth
+    modeStateQuasiQuoting
 };
 
 define newModeState();
-    consModeState( 0, absent )
+    consModeState( 0 )
 enddefine;
 
 define isQuasiQuoting( m );
@@ -98,6 +90,77 @@ define pepperLength( x );
     class_pepperLength( x.datakey )( x )
 enddefine;
 
+;;; -- Token --------------------------------------------------
+
+defclass Token {
+    tokenValue,
+    tokenSynProps
+};
+
+;;; -- Syntactic Properties -----------------------------------
+
+defclass SynProps {
+    synPropsStrength,
+    synPropsStyle,
+    synPropsOpeningBracketAux,
+    synPropsClosingBracketAux,
+    synPropsRank,
+    synPropsAction
+};
+
+define newAnySynProps( strength, style, opener, closer, rank, procedure action );
+    lvars is_brackets = ( style == "FxendF" or style == "endF" );
+    if opener then
+        unless is_brackets then
+            mishap( 'Invalid opener', [ ^opener ] )
+        endunless
+    endif;
+    if closer then
+        unless is_brackets then
+            mishap( 'Invalid closer', [ ^closer ] )
+        endunless
+    endif;
+    unless rank.isinteger do
+        mishap( 'Invalid rank', [ ^rank ] )
+    endunless;
+    unless lmember( strength, [ weak strong daft ] ) do
+        mishap( 'Invalid strength', [ ^strength ] )
+    endunless;
+    unless lmember( style, [ F x Fx xFx $ FxendF endF ] ) do
+        mishap( 'Invalid style', [ ^style ] )
+    endunless;
+    consSynProps( strength, style, opener, closer, rank, action )
+enddefine;
+
+define newOpSynProps( strength, style, rank, procedure action );
+    newAnySynProps(  strength, style, false, false, rank, action )
+enddefine;
+
+define newSingleSynProps( strength, style, procedure action );
+    newAnySynProps( strength, style, false, false, 0, action )
+enddefine;
+
+define newPairedSynProps( strength, opener, closer, procedure action );
+    newAnySynProps( strength, "FxendF", opener, closer, 0, action );
+    newAnySynProps( strength, "endF", opener, closer, 0, action );
+enddefine;
+
+define synPropsClosingBracket( s );
+    lvars b = s.synPropsClosingBracketAux;
+    unless b.isword do
+        mishap( 'Trying to use undefined closer', [% s %] )
+    endunless;
+    b
+enddefine;
+
+
+define synPropsOpeningBracket( s );
+    lvars b = s.synPropsOpeningBracketAux;
+    unless b.isword do
+        mishap( 'Trying to use undefined closer', [ ^s ] )
+    endunless;
+    b
+enddefine;
 
 ;;; -- Meanings -----------------------------------------------
 
@@ -106,45 +169,104 @@ define oops( x );
 enddefine;
 
 defclass Meaning {
-    meanTitle,
+    meanTitle,          ;;; debugging only
     meanStrength,
-    meanStyle,
     meanArg,
-    meanRank,
     meanAction
 };
 
-define sigmaLength( n, x );
-    x.pepperLength + n
+define newAnyMeaning( token, strength, arg );
+    unless lmember( strength, [ weak strong daft ] ) do
+        mishap( 'Invalid Meaning strength', [ ^strength ] )
+    endunless;
+    unless arg.islist do
+        mishap( 'Invalid arg (list needed)', [ ^arg ] )
+    endunless;
+    lvars syn = token.tokenSynProps;
+    consMeaning(
+        token.tokenValue,
+        strength,
+        arg,
+        syn.synPropsAction
+    )
+enddefine;
+
+define newMeaning( token, arg );
+    newAnyMeaning( token, token.tokenSynProps.synPropsStrength, arg )
+enddefine;
+
+define newDaftMeaning( token, arg );
+    newAnyMeaning( token, "daft", arg )
 enddefine;
 
 define lengthMeaning( m );
     lvars A = m.meanArg;
-    lvars L = A.pepperLength;
-    ( L, A ) @applist sigmaLength
+    lvars L = A.listlength;
+    lvars i;
+    for i in A do
+        i.pepperLength + L -> L
+    endfor;
+    L
 enddefine;
 
 lengthMeaning -> class_pepperLength( Meaning_key );
-
-define makeWrapper( t, operands );
-    consMeaning( t.meanTitle, "strong", "made", operands, 0, t.meanAction )
-enddefine;
 
 define evalString( w );
     w @applist identfn
 enddefine;
 
+
 define formString( s, endsWithNewline );
-    lvars title = if endsWithNewline then "paraString" else "inString" endif;
-    consMeaning( title, "weak", "x", [^s], 0, evalString )
+    ;;; [ endsWithNewline ^endsWithNewline ]=>
+    lconstant weaksp = newSingleSynProps( "weak", "x", evalString );
+    lconstant strongsp = newSingleSynProps( "strong", "x", evalString );
+    consToken( s, if endsWithNewline then strongsp else weaksp endif )
+    ;;; consMeaning( title, "weak", "x", [ ^s ], 0, evalString )
 enddefine;
 
 define formTermin();
-    consMeaning( termin, "weak", "endF", absent, 0, oops(% termin %) )
+    consToken(
+        termin,
+        newSingleSynProps( "weak", "endF", oops(% termin %) )
+    )
 enddefine;
 
 
 ;;; -- Tokenization -------------------------------------------
+
+;;;
+;;; Mode is a positive integer that counts how deeply
+;;; nested we are in a quasi-quoted content.  I use the phrase
+;;; quasi-quoted with some trepidation, I doubt it is correct!
+;;;
+
+
+defclass Tokenizer {
+    tokenizerSource,
+    tokenizerMode       : pint,
+    tokenizerDump
+};
+
+define newTokenizer( procedure r );
+    consTokenizer(
+        r,              ;;; The character repeater.
+        0,              ;;; In the normal context.
+        []              ;;; The nested modes.
+    )
+enddefine;
+
+define saveTokenizerMode( t );
+    conspair( t.tokenizerMode, t.tokenizerDump ) -> t.tokenizerDump
+enddefine;
+
+define restoreTokenizerMode( t );
+     t.tokenizerDump.dest ->  t.tokenizerDump -> t.tokenizerMode;
+enddefine;
+
+define enterQuasiQuoting( t );
+    t.tokenizerMode + 1 -> t.tokenizerMode;
+enddefine;
+
 
 constant CHAR_plain = 0;
 constant CHAR_digit = 1;
@@ -156,17 +278,18 @@ constant CHAR_slash = 6;
 constant CHAR_layout = 7;
 constant CHAR_dollar = 8;
 
-define setType( charType, chars, table );
-    lvars i;
-    for i from 1 to chars.datalength do
-        charType -> subscrs( subscrs( i, chars ), table )
-    endfor
-enddefine;
+lconstant answer = consstring(#| repeat 256 times CHAR_plain endrepeat |#);
 
-constant answer = consstring(#| repeat 256 times CHAR_plain endrepeat |#);
-
-vars charTable = (
+constant charTable = (
     lblock
+
+        define lconstant setType( charType, chars, table );
+            lvars i;
+            for i from 1 to chars.datalength do
+                charType -> subscrs( subscrs( i, chars ), table )
+            endfor
+        enddefine;
+
         setType( CHAR_digit, '0123456789', answer );
         setType( CHAR_simple, '(){}[];', answer );
         setType( CHAR_layout, '\n\t\s', answer );
@@ -179,39 +302,43 @@ vars charTable = (
     endlblock
 );
 
-
 define peekCh( procedure r );
     r() ->> r()
 enddefine;
 
-define eatString( procedure r, ch );
-    consstring(#|
-        ch;
-        repeat
-            lvars newCh = r();
-            lvars nextCh = newCh == termin and termin or r.peekCh;
-            quitif(
-                newCh == termin or
-                ( newCh == `\\` and nextCh /== `\\` ) or
-                ( newCh == `\n` and nextCh == `\n` )
-            );
-            if newCh == `\\` and nextCh == `\\` then `\\`, r() @erase
-            else newCh
-            endif;
-        endrepeat;
-        newCh -> r();
-    |#) @formString (newCh == '\n')
-enddefine;
+vars procedure ( lookupWord );
 
-define cantExtend( ch, chType );
-    lvars newType = subscrs( ch, charTable );
-    not(
-        newType == chType or
-        ( chType == CHAR_letter and newType == CHAR_digit )
-    )
-enddefine;
+define nextToken( procedure r, mode );
 
-define nextToken( procedure r, mode, lookupWord );
+    define lconstant cantExtend( ch, chType );
+        lvars newType = subscrs( ch, charTable );
+        not(
+            newType == chType or
+            ( chType == CHAR_letter and newType == CHAR_digit )
+        )
+    enddefine;
+
+    define lconstant eatString( procedure r, ch );
+        consstring(#|
+            ch;
+            repeat
+                lvars newCh = r();
+                lvars nextCh = newCh == termin and termin or r.peekCh;
+                quitif(
+                    newCh == termin or
+                    ( newCh == `\\` and nextCh /== `\\` ) or
+                    ( newCh == `\n` and nextCh == `\n` )
+                );
+                if newCh == `\\` and nextCh == `\\` then
+                    `\\`, r() -> _
+                else
+                    newCh
+                endif;
+            endrepeat;
+            newCh -> r();
+        |#) @formString ( newCh == `\n` )
+    enddefine;
+
     repeat
         lvars ch = r();
         quitunless( ch == ` ` or ch == `\n` or ch == `\t` );
@@ -234,7 +361,7 @@ define nextToken( procedure r, mode, lookupWord );
         else
             consword(#| nextCh |#) @lookupWord
         endif;
-    elseif mode.isQuasiQuoting then
+    elseif mode == 0 then
         r @eatString ch
     elseif ch == `\"` then
         consstring(#|
@@ -264,108 +391,114 @@ define nextToken( procedure r, mode, lookupWord );
 enddefine;
 
 
+define readToken( tokenizer );
+    nextToken( tokenizer.tokenizerSource, tokenizer.tokenizerMode )
+enddefine;
 
 ;;; -- Parser -------------------------------------------------
 
 constant widestWidth = 200;
 
-vars procedure ( lookupWord );
 
-define makeNiladic( F );
-    ( F.meanTitle, "daft", "opApplied", [], 0, F.meanAction ) @consMeaning
+define makeOperand( T );
+    newMeaning( T, [% T.tokenValue %] )
 enddefine;
 
-define makeMonadic( L, F );
-    ( F.meanTitle, "daft", "opApplied", [L], 0, F.meanAction ) @consMeaning
+define makeNiladic( T );
+    newDaftMeaning( T, [] )
 enddefine;
 
-define makeMonadicWrapped( Ls, F );
-    ( F.meanTitle, "daft", "opApplied", Ls, 0, F.meanAction ) @consMeaning
+define makeMonadic( L, T );
+    newDaftMeaning( T, , [ ^L ] )
 enddefine;
 
-define makeDyadic( L, R, F );
-    ( F.meanTitle, "daft", "opApplied", [L, R], 0, F.meanAction ) @consMeaning
+define makeMonadicWrapped( Ls, T );
+    newDaftMeaning( T, Ls )
 enddefine;
 
-define getToken( r, mode );
-    r @nextToken (mode, lookupWord)
+define makeDyadic( L, R, T );
+    newDaftMeaning( T, [ ^L ^R ] )
 enddefine;
 
-define advance( r, mode );
-    r @getToken mode, r
-enddefine;
 
 vars unwrappers = [];
 
 vars procedure ( parseStuff, parseRepeatedly );
 
-define parseOperand( it, r, mode, width ) -> ( answer, token );
-    lvars s = it.meanStyle;
-    lvars rank = it.meanRank;
+define parseOperand( it, tokenizer, width ) -> ( answer, token );
+    lvars it_syn = it.tokenSynProps;
+    lvars s = it_syn.synPropsStyle;
+    lvars rank = it_syn.synPropsRank;
 ;;;    [`parse operand starting`, s].reportln;
     if s == "Fx" and rank <= width then
-        lvars ( R, newNext ) = r @advance mode @parseStuff (mode, rank - 1);
+        lvars ( R, newNext ) = readToken( tokenizer ) @parseStuff (tokenizer, rank - 1);
         R @makeMonadic it, newNext
     elseif s == "FxendF" then
-        dlocal unwrappers = [^(it.meanArg) ^^unwrappers];
-        lvars oldLevel = mode.modeStateQuasiQuoting;
-        lvars ( X, closer ) = r @parseRepeatedly (mode, widestWidth);
+        lvars wantedb = it_syn.synPropsClosingBracket;
+        dlocal unwrappers = [ ^wantedb ^^unwrappers ];
+        saveTokenizerMode( tokenizer );
+        lvars ( X, closer ) = tokenizer @parseRepeatedly (widestWidth);
         X @makeMonadicWrapped it;
-        oldLevel -> mode.modeStateQuasiQuoting;
-        if closer.meanTitle = it.meanArg then
+        restoreTokenizerMode( tokenizer );
+        lvars gotb = closer.tokenSynProps.synPropsClosingBracket;
+        if gotb == wantedb then
             ;;; good; advance to the next token ...
-            r @getToken mode
+            readToken( tokenizer )
         else
             ;;; ah. we have a random closer.
-            if closer.meanTitle @member unwrappers then
+            if lmember( gotb, unwrappers ) then
                 ;;; someone missed out *our* closer! Complain & deliver it.
-                warning( 'missing closer', [% it.meanArg, "got", closer %] );
+                warning( 'missing closer', [% wantedb, "got", gotb %] );
                 closer
             else
                 ;;; this one is lonely. Discard it.
-                warning( 'unexpected closer', [% closer, 'nested in', unwrappers %] );
-                r @getToken mode
+                warning( 'unexpected closer', [% gotb, 'nested in', unwrappers %] );
+                readToken( tokenizer )
             endif
         endif
     elseif s == "x" then
-        it, r @getToken mode
+        it.makeOperand, readToken( tokenizer )
     elseif s == "F" then
-        it @makeNiladic, r @getToken mode
+        it @makeNiladic,  readToken( tokenizer )
     elseif s == "$" then
-        mode.enterQuasiQuoting;
-        r @advance mode @parseOperand (mode, width)
+        tokenizer.enterQuasiQuoting;
+        readToken( tokenizer ) @parseOperand (tokenizer, width)
     else
         mishap( 'what sort of starter is this?', [^it] )
-    endif -> ( answer, token )
+    endif -> ( answer, token );
+    unless answer.isMeaning do
+        mishap( 'ParseOperand says Meaning needed', [ ^answer ] )
+    endunless;
 enddefine;
 
-define parseStuff( this, r, mode, width );
-    lvars ( L, next ) = (this, r) @parseOperand (mode, width);
-    ;;; [`parse stuff has`, L, `with next`, next.meanStyle,`=`, next].reportln;
+define parseStuff( this, tokenizer, width ) -> ( L, next );
+    (this) @parseOperand (tokenizer, width) -> ( L, next );
     repeat
-        lvars s = next.meanStyle;
-        lvars rank = next.meanRank;
+        lvars next_syn = next.tokenSynProps;
+        lvars s = next_syn.synPropsStyle;
+        lvars rank = next_syn.synPropsRank;
         quitunless( s == "xF" or s == "xFx" ) and ( rank <= width );
         if s == "xF" then
             ;;; [`-- that is postfix`].reportln;
-            L @makeMonadic next -> L, r @getToken mode -> next
+            L @makeMonadic next -> L,  readToken( tokenizer ) -> next
         else
             ;;; [`-- that is infix`].reportln;
-            lvars ( R, newNext ) = r @advance mode @parseStuff (mode, rank - 1);
+            lvars ( R, newNext ) =  readToken( tokenizer ) @parseStuff (tokenizer, rank - 1);
             (L, R) @makeDyadic next -> L, newNext -> next
         endif
     endrepeat;
-    ;;; [`parse stuff returns`, L, `with next`, next].reportln;
-    L, next
+    unless L.isMeaning do
+        mishap( 'parseStuff says Meaning needed', [ ^L ] )
+    endunless;
 enddefine;
 
-
-define parseRepeatedly( r, mode, width );
-    lvars this = r @getToken mode;
-    [%until this.meanStyle == "endF" do
-        (this, r) @parseStuff (mode, width) -> this
-    enduntil%],
-    ;;; [`parse repeatedly ends with`, this].reportln;
+define parseRepeatedly( tokenizer, width );
+    lvars this = tokenizer.readToken;
+    [%
+        until this.tokenSynProps.synPropsStyle == "endF" do
+            (this) @parseStuff (tokenizer, width) -> this
+        enduntil
+    %];
     this
 enddefine;
 
@@ -375,17 +508,17 @@ enddefine;
 vars procedure ( evalWrap, evalNoParaWrap, evalOp, evalItem, literal );
 
 define defWrapper( name, endName, action );
-    [%name,      consMeaning( name, "strong", "FxendF", endName, 0, action )%],
-    [%endName,   consMeaning( endName, "strong", "endF", name, 0, oops )%]
+    lvars ( a, b ) = newPairedSynProps( "strong", name, endName, action );
+    ( [ ^name ^a ], [ ^endName ^b ] )
 enddefine;
 
 define defWeakWrapper( name, endName, action );
-    [%name,      consMeaning( name, "weak", "FxendF", endName, 0, action )%],
-    [%endName,   consMeaning( endName, "weak", "endF", name, 0, oops )%]
+    lvars ( a, b ) = newPairedSynProps( "weak", name, endName, action );
+    ( [ ^name ^a ], [ ^endName ^b ] )
 enddefine;
 
 define defSimple( name, action );
-    [%name,      consMeaning( name, "strong", "F", absent, 0, action )%]
+    [% name, newSingleSynProps( "strong", "F", action ) %]
 enddefine;
 
 define defSimpleWrapper( name, wrapper );
@@ -394,12 +527,12 @@ define defSimpleWrapper( name, wrapper );
 enddefine;
 
 define defSimpleNoParaWrapper( name, wrapper );
-    lvars  endName = consword(#| 'end'.explode, name.explode |#);
+    lvars endName = "end" <> name;
     defWeakWrapper( name, endName, evalNoParaWrap(% wrapper %) )
 enddefine;
 
 define defOperator( name, rank, proc );
-    [%name,  consMeaning( name, "strong", "plain", [], rank, evalOp(% name, proc %) )%]
+    [% name, newOpSynProps( "strong", "plain", rank, evalOp(% name, proc %) ) %]
 enddefine;
 
 define evalOp( x, name, proc );
@@ -408,11 +541,11 @@ define evalOp( x, name, proc );
 enddefine;
 
 define defInfix( name, level, action );
-    [% name, consMeaning( name, "weak", "xFx", [], level, action ) %]
+    [% name, newOpSynProps( "weak", "xFx", level, action ) %]
 enddefine;
 
 define defPrefix( name, action );
-    [%name, consMeaning( name, "weak", "Fx", [], 20, action )%]
+    [% name, newOpSynProps( "weak", "Fx", 20, action ) %]
 enddefine;
 
 define evalLinkto( x );
@@ -453,18 +586,6 @@ enddefine;
 define evalBoxes( x );
     x @applist evalItem
 enddefine;
-
-defclass Context {
-    conNumbering,
-    conProperties
-};
-
-vars theContext = (
-    consContext(
-        {0, 0, 0, 0, 0, 0},
-        newproperty( [], 100, absent, "perm" )
-    )
-);
 
 define isNumbering( stuff );
     0 < stuff.pepperLength and
@@ -521,24 +642,25 @@ define printOn( x, consumer );
     pr( x )
 enddefine;
 
-define nextNumber( depth, leading );
-    lvars v = theContext.conNumbering;
-    if leading.pepperLength > 0 then
-        leading
-    else
-        lvars i;
-        for i from depth + 1 to v.pepperLength do
-            0 -> subscrs( i, v )
-        endfor;
-        subscrs( depth, v ) + 1 -> subscrs( depth, v );
-        consstring(#|
-            lvars gap = '';
-            for i from 1 to depth do
-                gap @printOn identfn, '.' -> gap, subscrs( i, v) @printOn identfn
-            endfor
-        |#)
-    endif
-enddefine;
+;;; define nextNumber( depth, leading );
+;;;     mishap( 'This is never called', [] );
+;;;     lvars v = theContext.conNumbering;
+;;;     if leading.pepperLength > 0 then
+;;;         leading
+;;;     else
+;;;         lvars i;
+;;;         for i from depth + 1 to v.pepperLength do
+;;;             0 -> subscrv( i, v )
+;;;         endfor;
+;;;         subscrv( depth, v ) + 1 -> subscrs( depth, v );
+;;;         consstring(#|
+;;;             lvars gap = '';
+;;;             for i from 1 to depth do
+;;;                 gap @printOn identfn, '.' -> gap, subscrs( i, v) @printOn identfn
+;;;             endfor
+;;;         |#)
+;;;     endif
+;;; enddefine;
 
 vars contentsList = [];
 
@@ -699,13 +821,6 @@ define evalAllSyntax( x );
     syntaxDefs.rev @applist dl
 enddefine;
 
-define argLength( x );
-    if x == absent or x == [] then 0 else x.front.pepperLength endif
-enddefine;
-
-define addItemLength( n, x );
-    n + x.pepperLength
-enddefine;
 
 define xxmeanArg( x );
     lvars a = x.meanArg;
@@ -817,7 +932,7 @@ define showSeq( seq, prefix, nested );
             prefix, gap, ' ' -> gap, item @showItem true
         endfor
     else
-        '\n\n\\begin{tabular}{l}\n' @literal,
+        '\\begin{tabular}{l}\n' @literal,
         lvars item;
         for item in_list seq do
             prefix, gap, ' ' -> gap, item @showItem nested, ' \\\\ \n' @literal
@@ -855,6 +970,11 @@ define reportItems( x );
 enddefine;
 
 define formRhs( items );
+
+    define lconstant addItemLength( n, x );
+        n + x.pepperLength
+    enddefine;
+
     lvars maxWidth = 72;
     lvars n = applist( 0, items, addItemLength );
     ;;; [`pepperLength =`, n].reportln;
@@ -877,7 +997,7 @@ define evalSyntax( x );
     lvars count = syntaxCount + 1 ->> syntaxCount;
     lvars thisDef = (
         [%
-            '\n\n\\begin{tabular}{l}\n' @literal,
+            '\\begin{tabular}{l}\n' @literal,
             '{\\bf ' @literal,
                 "def", consstring(#| count @printOn identfn, `.` |#), ' ',
                 x.front.evalItem, ' ::= ',
@@ -900,7 +1020,7 @@ define evalRow( L );
 enddefine;
 
 define evalTable( L );
-    '\n\n\\begin{tabular}' @literal,
+    '\\begin{tabular}' @literal,
     '{|' @literal, repeat L.hd.pepperLength times 'l' endrepeat, '|}' @literal, '\n',
     lvars row;
     for row in L @maplist evalItem do
@@ -925,20 +1045,11 @@ define evalItemParaList( xL );
     until xL.null do
         lvars this;
         xL.dest -> ( this, xL );
-        if this.meanAction == evalString then
-            if this.meanTitle == "paraString" then
-                '\n\n', pending.rev @applist evalItem, this.evalItem, '';
-                [] -> pending
-            else
-                this @conspair pending -> pending
-            endif
+        if this.meanStrength == "strong" then
+            '\n\n', pending.rev @applist evalItem, this.evalItem, '';
+            [] -> pending
         else
-            if this.meanStrength == "strong" then
-                '\n\n', pending.rev @applist evalItem, this.evalItem, '';
-                [] -> pending
-            else
-                this @conspair pending -> pending
-            endif
+            this @conspair pending -> pending
         endif
     enduntil;
     unless pending.null do
@@ -947,7 +1058,7 @@ define evalItemParaList( xL );
 enddefine;
 
 define evalItem( item );
-    (item.meanAction)( item.meanArg )
+    ( item.meanAction )( item.meanArg )
 enddefine;
 
 vars inSuper = false;
@@ -961,8 +1072,11 @@ vars really = false;
 
 ;;; convert characters for output, keeping track of various settings
 
-define print =
-    pr
+vars procedure outputSink;
+
+define print( x );
+    dlocal cucharout = outputSink;
+    pr( x )
 enddefine;
 
 define literal( x );
@@ -970,37 +1084,37 @@ define literal( x );
 enddefine;
 
 define texLiteral( ch );
-    if ch == `_` then       `\\`.cucharout, ch.cucharout
-    elseif ch == `{` then   `\\`.cucharout, ch.cucharout
-    elseif ch == `}` then   `\\`.cucharout, ch.cucharout
-    elseif ch == `#` then   `\\`.cucharout, ch.cucharout
-    elseif ch == `%` then   `\\`.cucharout, ch.cucharout
-    elseif ch == `$` then   `\\`.cucharout, ch.cucharout
-    elseif ch == `&` then   `\\`.cucharout, ch.cucharout
+    if ch == `_` then       `\\`.outputSink, ch.outputSink
+    elseif ch == `{` then   `\\`.outputSink, ch.outputSink
+    elseif ch == `}` then   `\\`.outputSink, ch.outputSink
+    elseif ch == `#` then   `\\`.outputSink, ch.outputSink
+    elseif ch == `%` then   `\\`.outputSink, ch.outputSink
+    elseif ch == `$` then   `\\`.outputSink, ch.outputSink
+    elseif ch == `&` then   `\\`.outputSink, ch.outputSink
     elseif ch == `[` then   '{[}'.print
     elseif ch == `]` then   '{]}'.print
     elseif ch == `^` then
-        unless inMaths do `$`.cucharout endunless;
+        unless inMaths do `$`.outputSink endunless;
         '^\\wedge'.print;
-        unless inMaths do `$`.cucharout endunless;
+        unless inMaths do `$`.outputSink endunless;
     elseif ch == `\\` then
-        unless inMaths do `$`.cucharout endunless;
+        unless inMaths do `$`.outputSink endunless;
         '\\setminus'.print;
-        unless inMaths do `$`.cucharout endunless;
+        unless inMaths do `$`.outputSink endunless;
     elseif ch == `<` then
-        unless inMaths do `$`.cucharout endunless;
+        unless inMaths do `$`.outputSink endunless;
         '<'.print;
-        unless inMaths do `$`.cucharout endunless;
+        unless inMaths do `$`.outputSink endunless;
     elseif ch == `>` then
-        unless inMaths do `$`.cucharout endunless;
+        unless inMaths do `$`.outputSink endunless;
         '>'.print;
-        unless inMaths do `$`.cucharout endunless;
+        unless inMaths do `$`.outputSink endunless;
     elseif ch == `|` then
-        unless inMaths do `$`.cucharout endunless;
+        unless inMaths do `$`.outputSink endunless;
         '\\mid'.print;
-        unless inMaths do `$`.cucharout endunless;
+        unless inMaths do `$`.outputSink endunless;
     else
-        ch.cucharout
+        ch.outputSink
     endif
 enddefine;
 
@@ -1047,7 +1161,7 @@ enddefine;
 vars procedure ( sysLookupWord );
 
 define tokenise( r, width );
-    lvars mode = newModeState();
+    lvars tokenizer = newTokenizer( r );
     [%
         '\\documentclass{report}\n' @literal,
         '\\setlength{\\parindent}{0in}\n' @literal,
@@ -1057,13 +1171,20 @@ define tokenise( r, width );
         '\\begin{document}\n' @literal,
         '\\maketitle\n' @literal,
         '\\tableofcontents\n' @literal,
-        r @parseRepeatedly (mode, width) @erase @applist evalItemPara,
+        applist( parseRepeatedly( tokenizer, width ) -> _, evalItemPara ),
         '\\end{document}\n' @literal
     %] @applist printItem
 enddefine;
 
+define evalWord( w );
+    w.dl
+enddefine;
 
-define wordTable =
+;;; define asNormal( w );
+;;;     consSynProps( undef, "weak", "x", undef, 0, evalWord )
+;;; enddefine;
+
+define synPropsTable =
     newanyproperty(
         [%
             defInfix( "linkto", 20, evalLinkto );
@@ -1092,26 +1213,20 @@ define wordTable =
             defSimple( "n", evalN ),
             defSimple( "t", evalT ),
             defSimple( "contents", evalContents ),
-            [%"$",       consMeaning( "$", "daft", "$", absent, 0, oops )%]
+            [ $ % newSingleSynProps( "daft", "$", oops ) %]
         %].dup.length, 1, false,
         false, false, "perm",
-        absent, false
+        newSingleSynProps( "weak", "x", evalWord ),
+        false
     )
 enddefine;
 
-define evalWord( w );
-    w.dl
-enddefine;
-
-define asNormal( w );
-    consMeaning( w, "weak", "x", [^w], 0, evalWord )
-enddefine;
-
 define lookupWord( w );
-    lvars m = w.wordTable;
-    if m == absent then w.asNormal ->> w.wordTable else m endif
-    ;;; -> val it; [`look up`, w, `gets`, it].reportln; it
+    lvars syn = w.synPropsTable;
+    consToken( w, syn )
 enddefine;
+
+
 
 define charsFromFile( fname );
     fname.discin.newpushable
