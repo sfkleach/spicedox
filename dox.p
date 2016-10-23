@@ -575,26 +575,6 @@ define printOn( x, consumer );
     pr( x )
 enddefine;
 
-;;; define nextNumber( depth, leading );
-;;;     mishap( 'This is never called', [] );
-;;;     lvars v = theContext.conNumbering;
-;;;     if leading.pepperLength > 0 then
-;;;         leading
-;;;     else
-;;;         lvars i;
-;;;         for i from depth + 1 to v.pepperLength do
-;;;             0 -> subscrv( i, v )
-;;;         endfor;
-;;;         subscrv( depth, v ) + 1 -> subscrs( depth, v );
-;;;         consstring(#|
-;;;             lvars gap = '';
-;;;             for i from 1 to depth do
-;;;                 gap @printOn identfn, '.' -> gap, subscrs( i, v) @printOn identfn
-;;;             endfor
-;;;         |#)
-;;;     endif
-;;; enddefine;
-
 vars contentsList = [];
 
 define displayContents();
