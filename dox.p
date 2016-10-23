@@ -626,17 +626,6 @@ define delayedTitle();
     endif
 enddefine;
 
-;;; vars headerStrings = (
-;;;     {%
-;;;         consCouple( '\\chapter{', '}\n' ),
-;;;         consCouple( '\\section{', '}\n' ),
-;;;         consCouple( '\\subsection{', '}\n' ),
-;;;         consCouple( '\\subsubsection{', '}\n' ),
-;;;         consCouple( '\\paragraph{', '}\n' ),
-;;;         consCouple( '\\subparagraph', '}\n' ),
-;;;     %}
-;;; );
-
 define doHeaded( x, level, command );
     lvars loc = "here".gensym;
     lvars ( numeric, title ) = x.front.splitTitle;
