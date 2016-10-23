@@ -239,7 +239,7 @@ define peekCh( procedure r );
     r() ->> r()
 enddefine;
 
-vars procedure ( lookupWord );
+vars procedure ( newToken );
 
 define nextToken( procedure r, mode );
 
@@ -288,11 +288,11 @@ define nextToken( procedure r, mode );
                     quitunless( `a` <= newCh and newCh <= `z` );
                     newCh
                 endrepeat
-            |#) @lookupWord, newCh -> r()
+            |#) @newToken, newCh -> r()
         elseif nextCh == `\\` then
             r @eatString nextCh
         else
-            consword(#| nextCh |#) @lookupWord
+            consword(#| nextCh |#) @newToken
         endif;
     elseif mode == 0 then
         r @eatString ch
@@ -319,7 +319,7 @@ define nextToken( procedure r, mode );
                     newCh
                 endrepeat
             |#), newCh -> r()
-        endif @lookupWord
+        endif @newToken
     endif
 enddefine;
 
@@ -1111,9 +1111,8 @@ define synPropsTable =
     )
 enddefine;
 
-define lookupWord( w );
-    lvars syn = w.synPropsTable;
-    consToken( w, syn )
+define newToken( w );
+    consToken( w, w.synPropsTable )
 enddefine;
 
 define charsFromFile( fname );
