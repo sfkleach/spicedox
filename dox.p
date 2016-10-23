@@ -182,7 +182,7 @@ defclass Tokenizer {
 
 define newTokenizer( procedure r );
     consTokenizer(
-        r,              ;;; The character repeater.
+        r.newpushable,  ;;; The character repeater.
         0,              ;;; In the normal context.
         []              ;;; The nested modes.
     )
@@ -356,7 +356,7 @@ enddefine;
 
 vars unwrappers = [];
 
-vars procedure ( parseStuff, parseRepeatedly );
+vars procedure ( parseStuff, parseRepeatedly, parseFromTokenizer );
 
 define parseOperand( it, tokenizer, width ) -> ( answer, token );
     lvars it_syn = it.tokenSynProps;
@@ -370,7 +370,7 @@ define parseOperand( it, tokenizer, width ) -> ( answer, token );
         lvars wantedb = it_syn.synPropsClosingBracket;
         dlocal unwrappers = [ ^wantedb ^^unwrappers ];
         saveTokenizerMode( tokenizer );
-        lvars ( X, closer ) = tokenizer @parseRepeatedly (maxRank);
+        lvars ( X, closer ) = tokenizer.parseFromTokenizer;
         X @makeMonadicWrapped it;
         restoreTokenizerMode( tokenizer );
         lvars gotb = closer.tokenSynProps.synPropsClosingBracket;
@@ -435,6 +435,9 @@ define parseRepeatedly( tokenizer, width );
     this
 enddefine;
 
+define parseFromTokenizer( tokenizer );
+    parseRepeatedly( tokenizer, maxRank )
+enddefine;
 
 ;;; -- Main ---------------------------------------------------
 
@@ -1057,7 +1060,7 @@ enddefine;
 
 vars procedure ( sysLookupWord );
 
-define tokenise( r, width );
+define runFromRepeater( r );
     lvars tokenizer = newTokenizer( r );
     [%
         '\\documentclass{report}\n' @literal,
@@ -1068,7 +1071,7 @@ define tokenise( r, width );
         '\\begin{document}\n' @literal,
         '\\maketitle\n' @literal,
         '\\tableofcontents\n' @literal,
-        applist( parseRepeatedly( tokenizer, width ) -> _, evalItemPara ),
+        applist( parseFromTokenizer( tokenizer ) -> _, evalItemPara ),
         '\\end{document}\n' @literal
     %] @applist printItem
 enddefine;
@@ -1115,13 +1118,8 @@ define newToken( w );
     consToken( w, w.synPropsTable )
 enddefine;
 
-define charsFromFile( fname );
-    fname.discin.newpushable
-enddefine;
-
 define handleFile( arg );
-    lvars r = arg.charsFromFile;
-    r @tokenise maxRank
+    runFromRepeater( arg.discin )
 enddefine;
 
 define main( source_file, output_file );
