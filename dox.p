@@ -1077,19 +1077,12 @@ define evalWord( w );
     w.dl
 enddefine;
 
-;;; define asNormal( w );
-;;;     consSynProps( undef, "weak", "x", undef, 0, evalWord )
-;;; enddefine;
-
 define synPropsTable =
     newanyproperty(
         [%
             defInfix( "linkto", 20, evalLinkto );
             defPrefix( "label", evalLabel );
             defInfix( "ref", 20, evalRef );
-    ;;;        defWeakWrapper( "\(", "\)", evalVisibleBrackets );
-    ;;;        defWeakWrapper( "\[%", "\%]", evalVisibleBoxes );
-    ;;;
             defSimpleNoParaWrapper( "asis", "pre" );
             defWrapper( "part", "endpart", evalPart ),
             defWrapper( "indented", "endindented", evalIndented ),
@@ -1123,8 +1116,6 @@ define lookupWord( w );
     consToken( w, syn )
 enddefine;
 
-
-
 define charsFromFile( fname );
     fname.discin.newpushable
 enddefine;
@@ -1134,23 +1125,10 @@ define handleFile( arg );
     r @tokenise widestWidth
 enddefine;
 
-define handleSet( arg );
-    ;;; do nothing, today.
+define main( source_file, output_file );
+    dlocal outputSink = output_file.discout;
+    handleFile( source_file );
+    outputSink( termin )
 enddefine;
-
-define main( n );
-    lvars args = n.conslist;
-    lvars action = handleFile;
-    lvars arg;
-    for arg in args do
-        ;;; ['-- doing', arg].reportln;
-        if arg = '-file' then handleFile -> action
-        elseif arg = '-set' then handleSet -> action
-        else arg @action
-        endif
-    endfor
-enddefine;
-
-
 
 ;;; -----------------------------------------------------------
