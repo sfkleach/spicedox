@@ -1,29 +1,6 @@
 uses newpushable
 uses @
 
-;;; -- ModeState ----------------------------------------------
-;;;
-;;; ModeState is a positive integer that counts how deeply
-;;; nested we are in a quasi-quoted content.  I use the phrase
-;;; quasi-quoted with some trepidation, I doubt it is correct!
-;;;
-
-defclass ModeState {
-    modeStateQuasiQuoting
-};
-
-define newModeState();
-    consModeState( 0 )
-enddefine;
-
-define isQuasiQuoting( m );
-    m.modeStateQuasiQuoting == 0
-enddefine;
-
-define enterQuasiQuoting( m );
-    m.modeStateQuasiQuoting + 1 -> m.modeStateQuasiQuoting
-enddefine;
-
 ;;; -- pepperLength -------------------------------------------
 
 define class_pepperLength =
