@@ -627,7 +627,6 @@ define delayedTitle();
 enddefine;
 
 define doHeaded( x, level, command );
-    lvars loc = "here".gensym;
     lvars ( numeric, title ) = x.front.splitTitle;
     ;;; val header = catStrings(# level @nextNumber numeric, space, title.evalItem #);
     lvars header = title.evalItem;
