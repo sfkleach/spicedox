@@ -924,10 +924,6 @@ define evalSyntax( x );
     thisDef.dl
 enddefine;
 
-define evalAlt( x );
-    '\n\nZZZ' @literal
-enddefine;
-
 define evalRow( L );
     L @maplist evalItem
 enddefine;
