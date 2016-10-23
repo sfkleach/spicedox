@@ -330,7 +330,7 @@ enddefine;
 
 ;;; -- Parser -------------------------------------------------
 
-constant widestWidth = 200;
+constant maxRank = 200;
 
 
 define makeOperand( T );
@@ -370,7 +370,7 @@ define parseOperand( it, tokenizer, width ) -> ( answer, token );
         lvars wantedb = it_syn.synPropsClosingBracket;
         dlocal unwrappers = [ ^wantedb ^^unwrappers ];
         saveTokenizerMode( tokenizer );
-        lvars ( X, closer ) = tokenizer @parseRepeatedly (widestWidth);
+        lvars ( X, closer ) = tokenizer @parseRepeatedly (maxRank);
         X @makeMonadicWrapped it;
         restoreTokenizerMode( tokenizer );
         lvars gotb = closer.tokenSynProps.synPropsClosingBracket;
@@ -1122,7 +1122,7 @@ enddefine;
 
 define handleFile( arg );
     lvars r = arg.charsFromFile;
-    r @tokenise widestWidth
+    r @tokenise maxRank
 enddefine;
 
 define main( source_file, output_file );
