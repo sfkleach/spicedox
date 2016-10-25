@@ -194,14 +194,6 @@ vars procedure ( newToken );
 
 define nextToken( procedure r, mode );
 
-    define lconstant cantExtend( ch, chType );
-        lvars newType = doxchartype( ch );
-        not(
-            newType == chType or
-            ( chType == CHAR_letter and newType == CHAR_digit )
-        )
-    enddefine;
-
     define lconstant eatString( procedure r, ch );
         consstring(#|
             ch;
