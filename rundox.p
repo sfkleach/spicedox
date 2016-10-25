@@ -1,7 +1,5 @@
-uses load;
-extend_searchlist( '$poplib/auto', popautolist ) -> popautolist;
-extend_searchlist( '$poplib/lib', popuseslist ) -> popuseslist;
-
-loadcompiler( 'dox.p' );
+uses popgospl
+uses_project pop11
+load_project . ;
 
 main( 'manual.web', '_test/manual.tex' );
