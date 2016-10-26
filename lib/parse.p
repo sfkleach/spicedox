@@ -89,6 +89,19 @@ define newToken( w );
     consToken( w, w.synPropsTable )
 enddefine;
 
+define newStringToken( s, endsWithNewline );
+    lconstant weaksp = newSingleSynProps( "weak", "x", "EvalString" );
+    lconstant strongsp = newSingleSynProps( "strong", "x", "EvalString" );
+    consToken( s, if endsWithNewline then strongsp else weaksp endif )
+enddefine;
+
+define newTerminToken();
+    consToken(
+        termin,
+        newSingleSynProps( "weak", "endF", "OopsTermin" )
+    )
+enddefine;
+
 ;;; -- Meanings -----------------------------------------------
 
 defclass Meaning {
@@ -135,18 +148,6 @@ enddefine;
 lengthMeaning -> class_pepperLength( Meaning_key );
 
 
-define formString( s, endsWithNewline );
-    lconstant weaksp = newSingleSynProps( "weak", "x", "EvalString" );
-    lconstant strongsp = newSingleSynProps( "strong", "x", "EvalString" );
-    consToken( s, if endsWithNewline then strongsp else weaksp endif )
-enddefine;
-
-define formTermin();
-    consToken(
-        termin,
-        newSingleSynProps( "weak", "endF", "OopsTermin" )
-    )
-enddefine;
 
 
 ;;; -- Tokenization -------------------------------------------
@@ -184,59 +185,31 @@ define enterQuasiQuoting( t );
     t.tokenizerMode + 1 -> t.tokenizerMode;
 enddefine;
 
-
-
-define peekCh( procedure r );
-    r() ->> r()
-enddefine;
-
-vars procedure ( newToken );
-
 define nextToken( procedure r, mode );
-
-    define lconstant eatString( procedure r, ch );
-        consstring(#|
-            ch;
-            repeat
-                lvars newCh = r();
-                lvars nextCh = newCh == termin and termin or r.peekCh;
-                quitif(
-                    newCh == termin or
-                    ( newCh == `\\` and nextCh /== `\\` ) or
-                    ( newCh == `\n` and nextCh == `\n` )
-                );
-                if newCh == `\\` and nextCh == `\\` then
-                    `\\`, r() -> _
-                else
-                    newCh
-                endif;
-            endrepeat;
-            newCh -> r();
-        |#) @formString ( newCh == `\n` )
-    enddefine;
-
+    ;;; Eat white space.
     repeat
         lvars ch = r();
         quitunless( ch == ` ` or ch == `\n` or ch == `\t` );
     endrepeat;
-    if ch == termin then
-        formTermin()
-    elseif ch == `\\` then
+
+    if ch == termin then        ;;; Check for end-of-input.
+        newTerminToken()
+    elseif ch == `\\` then      ;;; Check for keyword, otherwise it's a string.
         lvars nextCh = r();
         if `a` <= nextCh and nextCh <= `z` then
             consword(#|
                 nextCh;
                 repeat
-                    lvars newCh = r();
+                    lvars newCh = r.peekChar;
                     quitunless( `a` <= newCh and newCh <= `z` );
-                    newCh
-                endrepeat
-            |#) @newToken, newCh -> r()
+                    r()
+                endrepeat;
+            |#) @newToken;
         elseif nextCh == `\\` then
             r @eatString nextCh
         else
             consword(#| nextCh |#) @newToken
-        endif;
+        endif
     elseif mode == 0 then
         r @eatString ch
     elseif ch == `\"` then
@@ -248,7 +221,7 @@ define nextToken( procedure r, mode );
                 newCh
             endrepeat,
             ch
-        |#) @formString false
+        |#) @newStringToken false
     else
         lvars chType = doxchartype( ch );
         if chType == CHAR_simple then
