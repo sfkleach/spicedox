@@ -19,7 +19,7 @@ evalAllSyntax -> evaluateActionWord( "EvalAllSyntax" );
 evalAllIssues -> evaluateActionWord( "EvalAllIssues" );
 evalN -> evaluateActionWord( "EvalN" );
 evalT -> evaluateActionWord( "EvalT" );
-evalContents -> evaluateActionWord( "EvalContents" );
+;;; evalContents -> evaluateActionWord( "EvalContents" );
 
 oops -> evaluateActionWord( "Oops" );
 oops(% termin %) -> evaluateActionWord( "OopsTermin" );

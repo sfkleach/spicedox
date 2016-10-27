@@ -66,14 +66,6 @@ define evalBoxes( x );
     x @applist evalItem
 enddefine;
 
-define isNumbering( stuff );
-    0 < stuff.pepperLength and
-    lblock
-        lvars ch = subscrs( 1, stuff );
-        `0` <= ch and ch <= `9`
-    endlblock
-enddefine;
-
 define splitTitle( stuff );
     lvars x = stuff.meanArg.front;
     if x.isNumbering then
@@ -89,20 +81,9 @@ define splitTitle( stuff );
     endif
 enddefine;
 
-define printOn( x, consumer );
-    dlvars procedure consumer;
-    dlvars procedure previous = cucharout;
-
-    define dlocal cucharout( ch );
-        dlocal cucharout = previous;
-        consumer( ch )
-    enddefine;
-
-    pr( x )
-enddefine;
-
 vars contentsList = [];
 
+/*
 define displayContents();
 ;;;     for c in_list contentsList.rev do
 ;;;         if c.left <= 3 then
@@ -117,14 +98,11 @@ enddefine;
 define evalContents( x );
     displayContents
 enddefine;
-
-define catStrings( n );
-    lvars L = conslist( n );
-    consstring(#| applist( L, explode ) |#)
-enddefine;
+*/
 
 vars procedure ( evalItemParaList );
 
+/*
 define evalWrap( x, wrapper );
     catStrings(#| '<', wrapper, '>' |#),
     x @evalItemParaList,
@@ -136,6 +114,7 @@ define evalNoParaWrap( x, wrapper );
     x @applist evalItem,
     catStrings(#| '</', wrapper, '>' |#)
 enddefine;
+*/
 
 vars savedTitle = false;
 
