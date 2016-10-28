@@ -574,6 +574,16 @@ enddefine;
 
 ;;; -----------------------------------------------------------
 
+define evalOops( L );
+    oops( L )
+enddefine;
+
+define evalOopsTermin( L );
+    oops( termin )
+enddefine;
+
+;;; -----------------------------------------------------------
+
 evalLinkto -> evaluateActionWord( "EvalLinkto" );
 evalLabel -> evaluateActionWord( "EvalLabel" );
 evalRef -> evaluateActionWord( "EvalRef" );
@@ -597,8 +607,8 @@ evalN -> evaluateActionWord( "EvalN" );
 evalT -> evaluateActionWord( "EvalT" );
 ;;; evalContents -> evaluateActionWord( "EvalContents" );
 
-oops -> evaluateActionWord( "Oops" );
-oops(% termin %) -> evaluateActionWord( "OopsTermin" );
+evalOops -> evaluateActionWord( "Oops" );
+evalOopsTermin -> evaluateActionWord( "OopsTermin" );
 evalWord -> evaluateActionWord( "EvalWord" );
 evalString -> evaluateActionWord( "EvalString" );
 
