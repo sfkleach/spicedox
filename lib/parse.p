@@ -231,3 +231,19 @@ enddefine;
     defSimple( "contents", "EvalContents" ),
     [ $ % newSingleSynProps( "daft", "$", "Oops" ) %],
 %].addToSynPropsTable;
+
+;;; -----------------------------------------------------------
+
+defclass Parser {
+    parserTokenizer
+};
+
+define newParser =
+    consParser
+enddefine;
+
+procedure( this ) -> L; lvars L;
+    parseFromTokenizer( this.parserTokenizer ) -> ( L, _ );
+endprocedure -> class_apply( Parser_key );
+
+;;; -----------------------------------------------------------

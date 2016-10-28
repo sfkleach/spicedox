@@ -1,38 +1,29 @@
-uses @ ;
-
 ;;; -- Main ---------------------------------------------------
+
+defclass Evaluator {
+};
 
 vars procedure ( evalWrap, evalNoParaWrap, evalOp, evalItem, literal );
 
-define evalWord( w );
+define evalWord( w, self );
     w.dl
 enddefine;
 
-define evalString( w );
+define evalString( w, self );
     w @applist identfn
 enddefine;
 
-define evalOp( x, name, proc );
+define evalOp( x, name, proc, self );
     lvars ( L, R ) = x.dest.hd;
-    `(`, L.evalItem, name, R.evalItem, `)`
+    `(`, L @evalItem self, name, R @evalItem self, `)`
 enddefine;
 
-/*
-define defInfix( name, level, action );
-    [% name, newOpSynProps( "weak", "xFx", level, action ) %]
-enddefine;
-
-define defPrefix( name, action );
-    [% name, newOpSynProps( "weak", "Fx", 20, action ) %]
-enddefine;
-*/
-
-define evalLinkto( x );
+define evalLinkto( x, self );
     lvars ( L, R ) = x.dest.hd;
-    L.evalItem, ' (', R.evalItem, ')'
+    L @evalItem self, ' (', R @evalItem self, ')'
 enddefine;
 
-define evalLabel( x );
+define evalLabel( x, self );
     consstring(#|
         '\\label{'.explode,
         x.front.meanArg.front.explode,
@@ -40,30 +31,30 @@ define evalLabel( x );
     |#) @literal
 enddefine;
 
-define evalRef( x );
+define evalRef( x, self );
     lvars ( L, R ) = x.dest.hd;
     consstring(#|
         '\\ref={'.explode,
         L.meanArg.front.explode,
         '}'.explode
     |#) @literal,
-    R.evalItem
+    R @evalItem self
 enddefine;
 
-define evalBrackets( x );
-    x @applist evalItem
+define evalBrackets( x, self );
+    x @applist evalItem(% self %)
 enddefine;
 
-define evalN( x );
+define evalN( x, self );
     '\\\\ \n' @literal
 enddefine;
 
-define evalT( x );
+define evalT( x, self );
     ' \\> ' @literal
 enddefine;
 
-define evalBoxes( x );
-    x @applist evalItem
+define evalBoxes( x, self );
+    x @applist evalItem(% self %)
 enddefine;
 
 define splitTitle( stuff );
@@ -83,43 +74,12 @@ enddefine;
 
 vars contentsList = [];
 
-/*
-define displayContents();
-;;;     for c in_list contentsList.rev do
-;;;         if c.left <= 3 then
-;;;             "<br>",
-;;;             if c.left == 2 then " SPACE; " endif,
-;;;             if c.left == 3 then " SPACE;SPACE;" endif,
-;;;             c.right
-;;;         endif
-;;;     endfor
-enddefine;
-
-define evalContents( x );
-    displayContents
-enddefine;
-*/
-
 vars procedure ( evalItemParaList );
-
-/*
-define evalWrap( x, wrapper );
-    catStrings(#| '<', wrapper, '>' |#),
-    x @evalItemParaList,
-    catStrings(#| '</', wrapper, '>' |#)
-enddefine;
-
-define evalNoParaWrap( x, wrapper );
-    catStrings(#| '<', wrapper, '>' |#),
-    x @applist evalItem,
-    catStrings(#| '</', wrapper, '>' |#)
-enddefine;
-*/
 
 vars savedTitle = false;
 
-define evalTitle( x );
-    x @maplist evalItem -> savedTitle;
+define evalTitle( x, self );
+    x @maplist evalItem(% self %) -> savedTitle;
     ;;; "<h1>", savedTitle.dl, "</h1>"
 enddefine;
 
@@ -131,13 +91,16 @@ define delayedTitle();
     endif
 enddefine;
 
-define doHeaded( x, level, command );
+define doHeaded( x, level, command, self );
+    unless self.isEvaluator do
+        mishap( 'Evaluator needed', [ ^self] )
+    endunless;
     lvars ( numeric, title ) = x.front.splitTitle;
     ;;; val header = catStrings(# level @nextNumber numeric, space, title.evalItem #);
-    lvars header = title.evalItem;
+    lvars header = title @evalItem self;
     [ ^level ^^contentsList] -> contentsList;
     '\\' @literal, command, '{' @literal, header, '}\n' @literal,
-    x.tl @evalItemParaList
+    x.tl @evalItemParaList self
 enddefine;
 
 vars inAppendix = false;
@@ -148,53 +111,53 @@ define setAppendix();
     endunless
 enddefine;
 
-define evalAppendix( x );
-    setAppendix, x @doHeaded (1, 'chapter')
+define evalAppendix( x, self );
+    setAppendix, x @doHeaded (1, 'chapter', self)
 enddefine;
 
-define evalChapter( x );
-    x @doHeaded (1, 'chapter')
+define evalChapter( x, self );
+    x @doHeaded (1, 'chapter', self)
 enddefine;
 
-define evalSection( x );
-    x @doHeaded (2, 'section')
+define evalSection( x, self );
+    x @doHeaded (2, 'section', self)
 enddefine;
 
-define evalPassage( x );
-    x @doHeaded (3, 'subsection')
+define evalPassage( x, self );
+    x @doHeaded (3, 'subsection', self)
 enddefine;
 
-define evalFragment( x );
-    x @doHeaded (4, 'subsubsection')
+define evalFragment( x, self );
+    x @doHeaded (4, 'subsubsection', self )
 enddefine;
 
-define evalIndented( x );
+define evalIndented( x, self );
     '\\begin{quote}' @literal,
-    x @applist evalItem,
+    x @applist evalItem(% self %),
     '\\end{quote}' @literal
 enddefine;
 
-define evalPart( x );
+define evalPart( x, self );
     '\\part{' @literal,
-    x.hd.evalItem,
+    x.hd @evalItem self,
     '}\n' @literal,
-    x.tl @applist evalItem, '\n\n'
+    x.tl @applist evalItem(% self %), '\n\n'
 enddefine;
 
-define evalList( elems );
+define evalList( elems, self );
     '\\begin{itemize}' @literal,
     lvars x;
-    for x in elems do '\\item ' @literal, x.evalItem, '\n\n' endfor,
+    for x in elems do '\\item ' @literal, x @evalItem self, '\n\n' endfor,
     '\\end{itemize}' @literal
 enddefine;
 
-define evalSpice( blocks );
+define evalSpice( blocks, self );
     lvars gap = '';
     '\\begin{quote}\n' @literal,
     '\\begin{verbatim}\n' @literal,
     lvars x;
     for x in blocks do
-        gap, '\n' -> gap, [%x.evalItem%] @maplist literal
+        gap, '\n' -> gap, [% x @evalItem self %] @maplist literal
     endfor,
     '\\end{verbatim}\n' @literal,
     '\\end{quote}\n' @literal
@@ -204,12 +167,12 @@ vars theseIssues = [];
 
 vars procedure ( evalItemPara );
 
-define evalIssue( x );
+define evalIssue( x, self );
     lvars thisIssue;
     [%
         '\n\n',
         '{\\bf ' @literal, x.front @evalItemPara, '}' @literal,
-        x.back @evalItemParaList,
+        x.back @evalItemParaList self,
         ''
     %] -> thisIssue;
     thisIssue @conspair theseIssues -> theseIssues;
@@ -223,7 +186,7 @@ enddefine;
 vars syntaxDefs = [];
 vars syntaxCount = 0;
 
-define evalAllSyntax( x );
+define evalAllSyntax( x, self );
     syntaxDefs.rev @applist dl
 enddefine;
 
@@ -288,28 +251,31 @@ enddefine;
 
 vars procedure ( showSeq, showAlts );
 
-define evalVisibleBrackets( x );
-    "(", x @showSeq ('', true), ")"
+define evalVisibleBrackets( x, self );
+    "(", x @showSeq ('', true, self), ")"
 enddefine;
 
-define evalVisibleBoxes( x );
-    '[', x @showSeq ('', true), ']'
+define evalVisibleBoxes( x, self );
+    '[', x @showSeq ('', true, self), ']'
 enddefine;
 
-define showItem( item, nested );
+define showItem( item, nested, self );
+    unless self.isEvaluator do
+        mishap( 'Evaluator needed', [ ^self ] )
+    endunless;
     if item.isMeaning then
-        item @evalItem
+        item @evalItem self
     else
         lvars key = item.front;
         if key == "SEQ" then
-            "(", item.back @showSeq ('', true), ")"
+            "(", item.back @showSeq ('', true, self), ")"
         elseif key == "ALT" then
-            "(", showAlts( '', item, '', true), ")"
+            "(", showAlts( '', item, '', true, self), ")"
         elseif key == "STAR" then
-            item.back.back.front @showItem true,
-            item.back.front @showItem true @literal
+            item.back.back.front @showItem ( true, self ),
+            item.back.front @showItem ( true, self ) @literal
         elseif key == "OPT" then
-            '[', item.back.front @showItem true, ']'
+            '[', item.back.front @showItem ( true, self ), ']'
         else
             mishap( item, 1, 'oh dear' )
         endif
@@ -328,43 +294,49 @@ define blobSum( n, x );
     n + x.blobLength + 1
 enddefine;
 
-define showSeq( seq, prefix, nested );
+define showSeq( seq, prefix, nested, self );
+    unless self.isEvaluator do
+        mishap( 'Evaluator needed', [ ^self ] )
+    endunless;
     lvars gap = '';
     lvars k = seq.blobLength;
     ;;; ["blobLength", k].reportln;
     if k < 72 or nested then
         lvars item;
         for item in_list seq do
-            prefix, gap, ' ' -> gap, item @showItem true
+            prefix, gap, ' ' -> gap, item @showItem ( true, self )
         endfor
     else
         '\\begin{tabular}{l}\n' @literal,
         lvars item;
         for item in_list seq do
-            prefix, gap, ' ' -> gap, item @showItem nested, ' \\\\ \n' @literal
+            prefix, gap, ' ' -> gap, item @showItem ( nested, self ), ' \\\\ \n' @literal
         endfor,
         '\\end{tabular}\n' @literal
     endif
 enddefine;
 
-define showAlts( prefix, alts, suffix, nested );
+define showAlts( prefix, alts, suffix, nested, self );
+    unless self.isEvaluator do
+        mishap( 'Evaluator needed', [ ^self ] )
+    endunless;
     lvars sep = '';
     if nested then
         lvars alt;
         for alt in_list alts.back do
-            prefix, sep, alt.back @showSeq ('', true), suffix,
+            prefix, sep, alt.back @showSeq ('', true, self), suffix,
             ' !| ' -> sep
         endfor
     else
         lvars alt;
         for alt in_list alts.back do
-            prefix, sep, alt.back @showSeq ('', nested), suffix,
+            prefix, sep, alt.back @showSeq ('', nested, self), suffix,
             ' !| ' -> sep
         endfor
     endif
 enddefine;
 
-define formRhs( items );
+define formRhs( items, self );
     lvars maxWidth = 72;
     lvars n = sumapplist( items, pepperLength );
     lvars alts;
@@ -373,21 +345,22 @@ define formRhs( items );
         '\\hspace*{3mm}{\\tt ' @literal,
         alts,
         '} \\\\ \n' @literal,
-        false
+        false,
+        self
     )
 enddefine;
 
-define evalSyntax( x );
+define evalSyntax( x, self );
     lvars count = syntaxCount + 1 ->> syntaxCount;
     lvars thisDef = (
         [%
             '\\begin{tabular}{l}\n' @literal,
             '{\\bf ' @literal,
                 "def", consstring(#| count @printOn identfn, `.` |#), ' ',
-                x.front.evalItem, ' ::= ',
+                x.front @evalItem self, ' ::= ',
             '}' @literal,
             '\\\\ \n' @literal,
-            x.back.formRhs,
+            x.back @formRhs self,
             '\\end{tabular}\n\n' @literal
         %]
     );
@@ -395,15 +368,15 @@ define evalSyntax( x );
     thisDef.dl
 enddefine;
 
-define evalRow( L );
-    L @maplist evalItem
+define evalRow( L, self );
+    L @maplist evalItem(% self %)
 enddefine;
 
-define evalTable( L );
+define evalTable( L, self );
     '\\begin{tabular}' @literal,
     '{|' @literal, repeat L.hd.pepperLength times 'l' endrepeat, '|}' @literal, '\n',
     lvars row;
-    for row in L @maplist evalItem do
+    for row in L @maplist evalItem(% self %) do
         lvars sep = '';
         lvars item;
         for item in_list row do
@@ -414,11 +387,14 @@ define evalTable( L );
     '\\end{tabular}\n' @literal
 enddefine;
 
-define evalItemPara( x );
-    '\n\n', x.evalItem
+define evalItemPara( x, self );
+    '\n\n', x @evalItem self
 enddefine;
 
-define evalItemParaList( xL );
+define evalItemParaList( xL, self );
+    unless self.isEvaluator do
+        mishap( 'Evaluator needed', [ ^self ] )
+    endunless;
     ;;; when should paragraphs breaks be inserted?
     ;;; -- between successive strings, I think. So ...
     lvars pending = [];
@@ -426,14 +402,20 @@ define evalItemParaList( xL );
         lvars this;
         xL.dest -> ( this, xL );
         if this.meanStrength == "strong" then
-            '\n\n', pending.rev @applist evalItem, this.evalItem, '';
+            '\n\n';
+            lvars i;
+            for i in pending.rev do
+                evalItem( i, self )
+            endfor;
+            this @evalItem self;
+            '';
             [] -> pending
         else
             this @conspair pending -> pending
         endif
     enduntil;
     unless pending.null do
-        '\n\n', pending.rev @applist evalItem, ''
+        '\n\n', pending.rev @applist evalItem(% self %), ''
     endunless;
 enddefine;
 
@@ -446,7 +428,10 @@ define evaluateActionWord =
     )
 enddefine;
 
-define evalItem( item );
+define evalItem( item, self );
+    unless self.isEvaluator do
+        mishap( 'Evaluator needed', [ ^self ] )
+    endunless;
     lvars action = item.meanAction;
     lvars arg = item.meanArg;
     if action.isprocedure then
@@ -456,7 +441,7 @@ define evalItem( item );
         evaluateActionWord( action )
     else
         mishap( 'Procedure or word needed', [ ^action ^arg ] )
-    endif( arg )
+    endif( arg, self )
 enddefine;
 
 vars inSuper = false;
@@ -556,8 +541,7 @@ define printItem( item );
     endif
 enddefine;
 
-define runFromRepeater( r );
-    lvars tokenizer = newTokenizer( r );
+define evaluate( parser );
     [%
         '\\documentclass{report}\n' @literal,
         '\\setlength{\\parindent}{0in}\n' @literal,
@@ -567,18 +551,22 @@ define runFromRepeater( r );
         '\\begin{document}\n' @literal,
         '\\maketitle\n' @literal,
         '\\tableofcontents\n' @literal,
-        applist( parseFromTokenizer( tokenizer ) -> _, evalItemPara ),
+        applist( parser(), evalItemPara(% consEvaluator() %) ),
         '\\end{document}\n' @literal
     %] @applist printItem
 enddefine;
 
+define runFromRepeater( r ); lvars procedure r;
+    evaluate( newParser( newTokenizer( r ) ) )
+enddefine;
+
 ;;; -----------------------------------------------------------
 
-define evalOops( L );
+define evalOops( L, self );
     oops( L )
 enddefine;
 
-define evalOopsTermin( L );
+define evalOopsTermin( L, self );
     oops( termin )
 enddefine;
 

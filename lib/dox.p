@@ -7,5 +7,3 @@ define main( source_file, output_file );
     handleFile( source_file );
     outputSink( termin )
 enddefine;
-
-;;; -----------------------------------------------------------
