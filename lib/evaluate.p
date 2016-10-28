@@ -221,7 +221,6 @@ define evalAllIssues( x );
 enddefine;
 
 vars syntaxDefs = [];
-vars syntaxCount = 0;
 
 define evalAllSyntax( x );
     syntaxDefs.rev @applist dl
@@ -400,7 +399,6 @@ define formRhs( items );
 enddefine;
 
 define evalSyntax( x );
-    lvars count = syntaxCount + 1 ->> syntaxCount;
     lvars thisDef = (
         [%
             '\\begin{tabular}{l}\n' @literal,
