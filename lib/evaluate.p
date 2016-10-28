@@ -365,31 +365,11 @@ enddefine;
 
 vars procedure ( report );
 
-define reportItems( x );
-    ' '.report;
-    if x.islist then
-        '['.report, x @applist reportItems, ']'.report
-    else
-        if x.isMeaning then x.meanArg @reportItems else x.report endif
-    endif
-enddefine;
-
 define formRhs( items );
-
-    define lconstant addItemLength( n, x );
-        n + x.pepperLength
-    enddefine;
-
     lvars maxWidth = 72;
     lvars n = sumapplist( items, pepperLength );
-    ;;; [`pepperLength =`, n].reportln;
-    ;;; "-- item sequence -------------------------------------------".reportln;
-    ;;; items.reportItems, [].reportln;
     lvars alts;
     items.parseAlts -> (alts, items);
-    ;;; "-- parsed alternatives ------------------------------------".reportln;
-    ;;; alts.reportItems, [].reportln;
-    ;;; [`addItemLength=`, n].reportln;
     showAlts (
         '\\hspace*{3mm}{\\tt ' @literal,
         alts,
