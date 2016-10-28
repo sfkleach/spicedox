@@ -3,6 +3,10 @@
 defclass Evaluator {
 };
 
+define newEvaluator =
+    consEvaluator
+enddefine;
+
 vars procedure ( evalWrap, evalNoParaWrap, evalOp, evalItem, literal );
 
 define evalWord( w, self );
@@ -444,102 +448,8 @@ define evalItem( item, self );
     endif( arg, self )
 enddefine;
 
-vars inSuper = false;
-vars inSub = false;
-vars inBold = false;
-vars inCode = false;
-vars inItalics = false;
-vars inMaths = false;
+;;; -------------------------------------------------------------------
 
-vars really = false;
-
-;;; convert characters for output, keeping track of various settings
-
-vars procedure outputSink;
-
-define print( x );
-    dlocal cucharout = outputSink;
-    pr( x )
-enddefine;
-
-define literal( x );
-    print(% x %)
-enddefine;
-
-define texLiteral( ch );
-    if ch == `_` then       `\\`.outputSink, ch.outputSink
-    elseif ch == `{` then   `\\`.outputSink, ch.outputSink
-    elseif ch == `}` then   `\\`.outputSink, ch.outputSink
-    elseif ch == `#` then   `\\`.outputSink, ch.outputSink
-    elseif ch == `%` then   `\\`.outputSink, ch.outputSink
-    elseif ch == `$` then   `\\`.outputSink, ch.outputSink
-    elseif ch == `&` then   `\\`.outputSink, ch.outputSink
-    elseif ch == `[` then   '{[}'.print
-    elseif ch == `]` then   '{]}'.print
-    elseif ch == `^` then
-        unless inMaths do `$`.outputSink endunless;
-        '^\\wedge'.print;
-        unless inMaths do `$`.outputSink endunless;
-    elseif ch == `\\` then
-        unless inMaths do `$`.outputSink endunless;
-        '\\setminus'.print;
-        unless inMaths do `$`.outputSink endunless;
-    elseif ch == `<` then
-        unless inMaths do `$`.outputSink endunless;
-        '<'.print;
-        unless inMaths do `$`.outputSink endunless;
-    elseif ch == `>` then
-        unless inMaths do `$`.outputSink endunless;
-        '>'.print;
-        unless inMaths do `$`.outputSink endunless;
-    elseif ch == `|` then
-        unless inMaths do `$`.outputSink endunless;
-        '\\mid'.print;
-        unless inMaths do `$`.outputSink endunless;
-    else
-        ch.outputSink
-    endif
-enddefine;
-
-define texOutput( ch );
-    if really then
-        ch.texLiteral;
-        false -> really
-    else
-        if ch == `!` then
-            true -> really
-        elseif ch == `_` then
-            if inBold then '}'.print; false -> inBold
-            else '{\\bf '.print; true -> inBold
-            endif
-        elseif ch == `*` then
-            if inItalics then '}'.print; false -> inItalics
-            else '{\\em '.print; true -> inItalics
-            endif
-        elseif ch == `~` then
-            if inSub then '$'.print; false -> inSub
-            else '$_ '.print; true -> inSub
-            endif
-        elseif ch == `^` then
-            if inSuper then '$'.print; false -> inSuper
-            else '$^ '.print; true -> inSuper
-            endif
-        elseif ch == `|` then
-            if inCode then '}'.print; false -> inCode
-            else '{\\tt '.print; true -> inCode
-            endif
-        else
-            ch.texLiteral
-        endif
-    endif
-enddefine;
-
-define printItem( item );
-    if item.islist then item @applist printItem
-    elseif item.isprocedure then [% item() %] @applist printItem
-    else item @printOn texOutput
-    endif
-enddefine;
 
 define evaluate( parser );
     [%
