@@ -363,8 +363,6 @@ define showAlts( prefix, alts, suffix, nested );
     endif
 enddefine;
 
-vars procedure ( report );
-
 define formRhs( items );
     lvars maxWidth = 72;
     lvars n = sumapplist( items, pepperLength );
