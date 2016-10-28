@@ -221,6 +221,7 @@ define evalAllIssues( x );
 enddefine;
 
 vars syntaxDefs = [];
+vars syntaxCount = 0;
 
 define evalAllSyntax( x );
     syntaxDefs.rev @applist dl
@@ -364,6 +365,7 @@ define showAlts( prefix, alts, suffix, nested );
 enddefine;
 
 define formRhs( items );
+    lvars count = syntaxCount + 1 ->> syntaxCount;
     lvars maxWidth = 72;
     lvars n = sumapplist( items, pepperLength );
     lvars alts;
