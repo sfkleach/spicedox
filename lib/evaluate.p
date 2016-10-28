@@ -365,7 +365,6 @@ define showAlts( prefix, alts, suffix, nested );
 enddefine;
 
 define formRhs( items );
-    lvars count = syntaxCount + 1 ->> syntaxCount;
     lvars maxWidth = 72;
     lvars n = sumapplist( items, pepperLength );
     lvars alts;
@@ -379,6 +378,7 @@ define formRhs( items );
 enddefine;
 
 define evalSyntax( x );
+    lvars count = syntaxCount + 1 ->> syntaxCount;
     lvars thisDef = (
         [%
             '\\begin{tabular}{l}\n' @literal,
