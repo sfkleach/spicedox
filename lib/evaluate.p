@@ -17,16 +17,6 @@ define evalOp( x, name, proc );
     `(`, L.evalItem, name, R.evalItem, `)`
 enddefine;
 
-/*
-define defInfix( name, level, action );
-    [% name, newOpSynProps( "weak", "xFx", level, action ) %]
-enddefine;
-
-define defPrefix( name, action );
-    [% name, newOpSynProps( "weak", "Fx", 20, action ) %]
-enddefine;
-*/
-
 define evalLinkto( x );
     lvars ( L, R ) = x.dest.hd;
     L.evalItem, ' (', R.evalItem, ')'
@@ -228,20 +218,6 @@ define evalAllSyntax( x );
 enddefine;
 
 
-define xxmeanArg( x );
-    lvars a = x.meanArg;
-    if a.null then
-        mishap( x, 1, 'argh! it has a null arg!' )
-    endif;
-    a
-enddefine;
-
-define startsWith( items, word );
-    if items.null then false
-    elseif word.islist then items.hd.xxmeanArg.front @member word
-    else items.hd.xxmeanArg.front == word
-    endif
-enddefine;
 
 vars procedure ( showSeq, showAlts );
 

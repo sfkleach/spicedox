@@ -2,7 +2,7 @@ uses showtree;
 
 define treeify( x );
     if x.isMeaning then
-        [% x.meaningAction, applist( x.meaningArg, treeify ) %]
+        [% x.meanAction, applist( x.meanArg, treeify ) %]
     else
         lvars s = x sys_>< '';
         if s.length > 10 then
@@ -11,4 +11,8 @@ define treeify( x );
             s
         endif
     endif
+enddefine;
+
+define show( x );
+    showtree( treeify( x ) )
 enddefine;
