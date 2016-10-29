@@ -529,3 +529,33 @@ define runFromRepeater( r );
 enddefine;
 
 ;;; -----------------------------------------------------------
+
+evalLinkto -> evaluateActionWord( "EvalLinkto" );
+evalLabel -> evaluateActionWord( "EvalLabel" );
+evalRef -> evaluateActionWord( "EvalRef" );
+evalPart -> evaluateActionWord( "EvalPart" );
+evalIndented -> evaluateActionWord( "EvalIndented" );
+evalTitle -> evaluateActionWord( "EvalTitle" );
+evalChapter -> evaluateActionWord( "EvalChapter" );
+evalAppendix -> evaluateActionWord( "EvalAppendix" );
+evalSection -> evaluateActionWord( "EvalSection" );
+evalPassage -> evaluateActionWord( "EvalPassage" );
+evalFragment -> evaluateActionWord( "EvalFragment" );
+evalList -> evaluateActionWord( "EvalList" );
+evalSyntax -> evaluateActionWord( "EvalSyntax" );
+evalIssue -> evaluateActionWord( "EvalIssue" );
+evalRow -> evaluateActionWord( "EvalRow" );
+evalSpice -> evaluateActionWord( "EvalSpice" );
+evalTable -> evaluateActionWord( "EvalTable" );
+evalAllSyntax -> evaluateActionWord( "EvalAllSyntax" );
+evalAllIssues -> evaluateActionWord( "EvalAllIssues" );
+evalN -> evaluateActionWord( "EvalN" );
+evalT -> evaluateActionWord( "EvalT" );
+;;; evalContents -> evaluateActionWord( "EvalContents" );
+
+oops -> evaluateActionWord( "Oops" );
+oops(% termin %) -> evaluateActionWord( "OopsTermin" );
+evalWord -> evaluateActionWord( "EvalWord" );
+evalString -> evaluateActionWord( "EvalString" );
+
+;;; -----------------------------------------------------------
